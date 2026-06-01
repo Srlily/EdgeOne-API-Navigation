@@ -6,15 +6,22 @@ export async function GET(
 ) {
   const { path } = await params;
   const pathSegments = path.join('/');
-  const targetUrl = `https://img.srliy.com/${pathSegments}`;
+  const baseUrl = process.env.IMAGE_PROXY_URL || 'https://img.srliy.com';
+  const targetUrl = `${baseUrl}/${pathSegments}`;
   
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
     const response = await fetch(targetUrl, {
+      signal: controller.signal,
       headers: {
         'User-Agent': request.headers.get('user-agent') || '',
         'Accept': request.headers.get('accept') || '*/*',
       },
     });
+    
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       return new NextResponse('Image not found', { status: 404 });
@@ -26,7 +33,7 @@ export async function GET(
     headers.set('Content-Type', contentType);
     headers.set('Content-Length', response.headers.get('Content-Length') || '');
     headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-    headers.set('X-Proxy-From', 'api.srliy.com');
+    headers.set('X-Proxy-From', baseUrl);
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     headers.set('Access-Control-Allow-Headers', '*');
@@ -48,29 +55,41 @@ export async function HEAD(
 ) {
   const { path } = await params;
   const pathSegments = path.join('/');
-  const targetUrl = `https://img.srliy.com/${pathSegments}`;
+  const baseUrl = process.env.IMAGE_PROXY_URL || 'https://img.srliy.com';
+  const targetUrl = `${baseUrl}/${pathSegments}`;
   
-  const response = await fetch(targetUrl, {
-    method: 'HEAD',
-    headers: {
-      'User-Agent': request.headers.get('user-agent') || '',
-    },
-  });
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+    
+    const response = await fetch(targetUrl, {
+      method: 'HEAD',
+      signal: controller.signal,
+      headers: {
+        'User-Agent': request.headers.get('user-agent') || '',
+      },
+    });
+    
+    clearTimeout(timeoutId);
 
-  const contentType = response.headers.get('Content-Type') || getContentTypeFromPath(pathSegments);
-  const headers = new Headers();
-  
-  headers.set('Content-Type', contentType);
-  headers.set('Content-Length', response.headers.get('Content-Length') || '');
-  headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-  headers.set('Access-Control-Allow-Origin', '*');
-  headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
-  headers.set('Access-Control-Allow-Headers', '*');
+    const contentType = response.headers.get('Content-Type') || getContentTypeFromPath(pathSegments);
+    const headers = new Headers();
+    
+    headers.set('Content-Type', contentType);
+    headers.set('Content-Length', response.headers.get('Content-Length') || '');
+    headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+    headers.set('Access-Control-Allow-Origin', '*');
+    headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', '*');
 
-  return new NextResponse(null, {
-    status: response.status,
-    headers: headers,
-  });
+    return new NextResponse(null, {
+      status: response.status,
+      headers: headers,
+    });
+  } catch (error) {
+    console.error('Proxy error:', error);
+    return new NextResponse('Proxy failed', { status: 502 });
+  }
 }
 
 export async function OPTIONS(request: NextRequest) {
