@@ -12,11 +12,12 @@
       "target": "static"
     },
     {
+      "pathname": "/api/:path*",
+      "target": "serverless"
+    },
+    {
       "pathname": "/:path*",
       "target": "serverless"
     }
-  ],
-  "edge-config": {
-    "description": "API Navigation Portal"
-  }
+  ]
 }
