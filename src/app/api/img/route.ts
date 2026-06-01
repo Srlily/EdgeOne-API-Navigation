@@ -21,12 +21,22 @@ export async function GET(request: NextRequest) {
     const headers = new Headers();
     
     headers.set('Content-Type', contentType);
-    headers.set('Content-Length', response.headers.get('Content-Length') || '');
     headers.set('Cache-Control', 'public, max-age=3600');
     headers.set('Access-Control-Allow-Origin', '*');
     headers.set('Access-Control-Allow-Methods', 'GET, HEAD, OPTIONS');
     headers.set('Access-Control-Allow-Headers', '*');
     headers.set('Vary', 'Accept');
+
+    if (contentType.includes('text/html')) {
+      const html = await response.text();
+      const baseTag = '<base href="/api/img">';
+      const modifiedHtml = html.replace(/<head>/i, `<head>${baseTag}`);
+      
+      return new NextResponse(modifiedHtml, {
+        status: response.status,
+        headers: headers,
+      });
+    }
 
     return new NextResponse(response.body, {
       status: response.status,

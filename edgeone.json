@@ -5,5 +5,18 @@
   "buildCommand": "pnpm run build",
   "outputDirectory": ".next",
   "installCommand": "pnpm install",
-  "devCommand": "pnpm run dev"
+  "devCommand": "pnpm run dev",
+  "routes": [
+    {
+      "pathname": "/_next/static/:path*",
+      "target": "static"
+    },
+    {
+      "pathname": "/:path*",
+      "target": "serverless"
+    }
+  ],
+  "edge-config": {
+    "description": "API Navigation Portal"
+  }
 }

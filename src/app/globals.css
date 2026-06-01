@@ -28,7 +28,7 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
   color: var(--text-primary);
   overflow-x: hidden;
-  background-image: url('https://api.srliy.com/api/img/random');
+  background-image: url('/api/img/random');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;

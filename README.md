@@ -2,8 +2,6 @@
 
 一个现代化的 API 导航页面，基于 Next.js 15 构建，部署在 EdgeOne Pages 平台。
 
-Demo：https://api.srliy.com
-
 ## 项目特性
 
 - 🚀 **基于 Next.js 15** - 使用最新的 React 19 和 TypeScript
@@ -123,18 +121,34 @@ pnpm lint
 
 #### GET /api/img
 
-返回随机图片或默认图片。
+代理访问目标服务器的根路径内容，支持相对路径解析。
 
 **请求示例**:
 ```
 GET https://api.srliy.com/api/img
 ```
 
-**响应**: 直接返回图片文件
+**响应**: 
+- 如果目标服务器返回 HTML，会注入 `<base href="/api/img">` 标签
+- 这样页面中的相对路径（如 `/gallery`）会自动解析为 `/api/img/gallery`
+- 图片等非 HTML 内容直接透传
+
+**功能特性**:
+- ✅ **自动路径修正**：注入 base 标签，确保相对路径正确解析
+- ✅ **完整网站代理**：可以浏览目标服务器的完整网站结构
+- ✅ **图片直出**：非 HTML 内容直接返回
+
+**使用示例**:
+```
+访问 https://api.srliy.com/api/img
+→ 代理到 https://img.srliy.com
+→ 返回的 HTML 中 <a href="/gallery"> 会自动解析为 /api/img/gallery
+→ 点击链接跳转到 https://api.srliy.com/api/img/gallery（正确）
+```
 
 **响应头**:
 ```
-Content-Type: image/jpeg (根据实际图片类型)
+Content-Type: text/html (对于 HTML 内容)
 Cache-Control: public, max-age=3600
 Access-Control-Allow-Origin: *
 ```
@@ -297,6 +311,52 @@ X-Proxy-From: https://img.srliy.com
 - 在 EdgeOne 控制台手动触发重新部署
 - 确认环境变量名称拼写正确（区分大小写）
 
+### 5. 静态资源 404 错误
+
+**问题**: `_next/static/chunks/xxx.js` 返回 404，页面样式和脚本无法加载
+
+**解决方案**:
+1. **重新部署项目**
+   - 登录 EdgeOne Pages 控制台
+   - 点击"重新部署"按钮
+   - 等待部署完成（2-5分钟）
+
+2. **清除 EdgeOne 缓存**
+   - 在 EdgeOne 控制台清除站点缓存
+   - 或者访问 `https://api.srliy.com/?v=3` 绕过缓存
+
+3. **检查构建输出**
+   ```bash
+   pnpm run build
+   ls -la .next/static/
+   ```
+   确认 `.next/static` 目录存在且包含文件
+
+4. **验证 EdgeOne 配置**
+   - 确保 Framework 选择 `Next.js`
+   - Build Command: `pnpm run build`
+   - Output Directory: `.next`
+   - Install Command: `pnpm install`
+
+5. **检查 edgeone.json 配置**
+   确保包含路由配置：
+   ```json
+   {
+     "routes": [
+       {
+         "pathname": "/_next/static/:path*",
+         "target": "static"
+       },
+       {
+         "pathname": "/:path*",
+         "target": "serverless"
+       }
+     ]
+   }
+   ```
+
+**详细排查步骤**：请参考 [DEPLOYMENT_CHECKLIST.md](./DEPLOYMENT_CHECKLIST.md)
+
 ## 开发指南
 
 ### 添加新的 API 卡片
@@ -306,11 +366,18 @@ X-Proxy-From: https://img.srliy.com
 ```typescript
 const apiList: APIItem[] = [
   {
-    name: 'API 名称',
-    url: '/api/endpoint',
-    desc: 'API 描述',
-    icon: <YourIcon />,
-    status: 'active' | 'maintenance'
+    name: '随机图片',
+    url: '/api/img',
+    desc: '随机返回一张图片',
+    icon: <ImageIcon />,
+    status: 'active'
+  },
+  {
+    name: '图片画廊',
+    url: '/api/img/gallery',
+    desc: '访问图片画廊',
+    icon: <ChartIcon />,
+    status: 'active'
   }
 ];
 ```
@@ -323,10 +390,35 @@ const apiList: APIItem[] = [
 src/app/api/your-api/route.ts
 ```
 
+### API 路由说明
+
+项目使用 Next.js 的动态路由来代理图片：
+
+- **固定路由**: `/api/img/route.ts`
+  - 处理 `/api/img` 请求
+  - 代理到 `${IMAGE_PROXY_URL}`
+
+- **动态路由**: `/api/img/[...path]/route.ts`
+  - 处理 `/api/img/*` 所有路径
+  - 例如 `/api/img/gallery` 会代理到 `${IMAGE_PROXY_URL}/gallery`
+  - 支持多级路径如 `/api/img/folder/subfolder/image.jpg`
+
+**示例**：
+```
+输入: https://api.srliy.com/api/img/gallery
+代理: https://img.srliy.com/gallery
+
+输入: https://api.srliy.com/api/img/photos/vacation.jpg
+代理: https://img.srliy.com/photos/vacation.jpg
+```
+
 ## 许可证
 
 本项目基于 MIT 许可证开源。
 
+## 作者
+
+[Srlily](https://github.com/Srlily)
 
 ## 致谢
 
